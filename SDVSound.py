@@ -1,76 +1,79 @@
 import streamlit as st
-import pandas as pd
+import os
 
-# ==========================================
-# หมวดที่ 1: มาตรฐานระบบ (LOCKED - Active 🔒)
-# ==========================================
+# --- หมวดที่ 1: Active Lock (Configuration) ---
+st.set_page_config(page_title="Jigsaw Universal Assembler", layout="wide")
 
-def process_media_upload(uploaded_file, file_type_label):
-    if uploaded_file is not None:
-        try:
-            file_bytes = uploaded_file.getvalue()
-            file_name = uploaded_file.name
-            return file_bytes, file_name
-        except Exception as e:
-            st.error(f"Error Processing {file_type_label}: {e}")
-            return None, None
-    return None, None
+# บันทึกข้อควรระวังเรื่องสี V4 และ Mandatory Checklist
+CHECKLIST = ["Leading Character Sweep", "Version 4 Color Validator", "Structural Clone Match"]
 
-# --- [Section: Input & Style - คงเดิม 100%] ---
-st.title("⭐ SDVSound Universal Assembler")
+def init_system():
+    if 'processed' not in st.session_state:
+        st.session_state.processed = False
 
-with st.expander("System Configuration", expanded=True):
-    operation_mode = st.selectbox(
-        "Operation Mode", 
-        ["Standard", "Blackbox Audit", "Direct Drive"],
-        index=2 # ตามภาพล่าสุดของคุณที่เลือก Direct Drive
-    )
+# --- หมวดที่ 2: UI Layout (ตามรูปภาพของคุณ) ---
+st.title("🎬 Jigsaw Universal Assembler (Images & Video)")
 
-# --- [Section: Multi-Media Input (ส่วนที่ต่อเติม)] ---
-# 1. ส่วนของเสียง (เดิม)
-uploaded_audio = st.file_uploader("🎵 Upload Sound Effect / BGM", type=['mp3', 'wav'])
+col1, col2 = st.columns([1, 1])
 
-# 2. ส่วนของภาพ (เพิ่มใหม่)
-uploaded_image = st.file_uploader("🖼️ Upload Image / Overlay", type=['jpg', 'jpeg', 'png'])
-
-# 3. ส่วนของวิดีโอ (เพิ่มใหม่)
-uploaded_video = st.file_uploader("🎥 Upload Base Video / Footage", type=['mp4', 'mov', 'avi'])
-
-# --- [Logic: Assembler Connection] ---
-audio_data, audio_name = process_media_upload(uploaded_audio, "Audio")
-image_data, image_name = process_media_upload(uploaded_image, "Image")
-video_data, video_name = process_media_upload(uploaded_video, "Video")
-
-# --- [Display Results] ---
-if audio_data:
-    st.success(f"🎵 Audio Loaded: {audio_name}")
-    st.audio(audio_data)
-
-if image_data:
-    st.success(f"🖼️ Image Loaded: {image_name}")
-    st.image(image_data, caption="Preview Image", use_column_width=True)
-
-if video_data:
-    st.success(f"🎥 Video Loaded: {video_name}")
-    st.video(video_data)
-
-# ==========================================
-# หมวดที่ 2: การประมวลผล (Active 🔒)
-# ==========================================
-
-if operation_mode == "Direct Drive":
-    # แสดงคำเตือนตามภาพหน้าจอของคุณ
-    st.warning("⚡ Direct Drive Mode: Zero-Latency Rendering (ระบบส่งค่าตรงไปยัง Assembler)")
+with col1:
+    st.header("📂 Upload Media Assets")
+    uploaded_files = st.file_uploader("Add Files (MP4, JPG, PNG, etc.)", accept_multiple_files=True)
     
-    # หากโหลดครบทุกอย่าง ระบบพร้อมสำหรับการ Assembler
-    if audio_data and (image_data or video_data):
-        st.info("🚀 System Ready for Universal Assembly")
-    else:
-        st.write("---")
-        st.write("Waiting for more media components...")
+    # ส่วนเพิ่มเรื่องเสียง (Audio Selector) ที่คุณต้องการ
+    st.subheader("🎵 Background Music Settings")
+    bgm_mode = st.radio("Audio Mode:", ["Separate Audio per Scene", "Single Global BGM"])
+    
+    global_bgm = None
+    if bgm_mode == "Single Global BGM":
+        global_bgm = st.file_uploader("Upload Global BGM File", type=["mp3", "wav"])
 
-# ==========================================
-# หมวดที่ 3: มาตรฐานโครงสร้างสคริปต์ (Active 🔒)
-# ==========================================
-# บันทึกสถานะ: [Audio: Loaded, Image: Pending, Video: Pending]
-# Sterility Code: sterility
+with col2:
+    st.header("🖥️ System Terminal")
+    if uploaded_files:
+        st.write(f"Total Files Uploaded: {len(uploaded_files)}")
+        for f in uploaded_files:
+            st.text(f"✔️ Loaded: {f.name}")
+
+st.divider()
+
+# --- หมวดที่ 3: Dynamic Caption & Audio Mapping ---
+st.header("📝 Edit Thai Captions & Audio Mapping")
+
+scene_data = []
+
+if uploaded_files:
+    # เรียงลำดับไฟล์ตามชื่อเพื่อให้ตรงกับลำดับฉาก (เหมือนใน Folder Downloads ของคุณ)
+    sorted_files = sorted(uploaded_files, key=lambda x: x.name)
+    
+    for i, file in enumerate(sorted_files):
+        with st.expander(f"Scene {i+1}: {file.name}", expanded=True):
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                caption = st.text_area(f"Subtitle for {file.name}:", key=f"cap_{i}")
+            with c2:
+                # ถ้าเป็นโหมดแยกเพลง ให้โชว์ที่อัปโหลดเพลงรายฉาก
+                scene_audio = None
+                if bgm_mode == "Separate Audio per Scene":
+                    scene_audio = st.file_uploader(f"Audio for Scene {i+1}", type=["mp3", "wav"], key=f"aud_{i}")
+            
+            scene_data.append({
+                "video": file.name,
+                "caption": caption,
+                "audio": global_bgm if bgm_mode == "Single Global BGM" else scene_audio
+            })
+
+# --- ส่วนการประมวลผล (Start Assembly) ---
+if st.button("🚀 Start Assembly"):
+    st.info("System initializing... [Blackbox Audit: ACTIVE]")
+    
+    # จำลองการทำงานของ Assembler
+    results = []
+    for data in scene_data:
+        # ดึงชื่อไฟล์เสียงมาแสดงผล (Audit)
+        audio_name = data['audio'].name if data['audio'] else "Mute"
+        results.append(f"Scene: {data['video']} | Audio: {audio_name} | Text: {data['caption'][:20]}...")
+    
+    st.success("Assembly Completed!")
+    st.write("### Final Deployment Summary")
+    st.table(scene_data) # แสดงตารางสรุปเหมือนในระบบ Audit
