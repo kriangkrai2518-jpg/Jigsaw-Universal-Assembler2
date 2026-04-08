@@ -25,7 +25,7 @@ def draw_thai_caption(image_data, text):
         
         try:
             # ปรับขนาด font ลงเหลือ 4% ของความสูงภาพ (Professional Size)
-            font_size = int(height * 0.04) 
+            font_size = int(height * 0.02) 
             if os.path.exists(font_path):
                 font = ImageFont.truetype(font_path, font_size)
             else:
